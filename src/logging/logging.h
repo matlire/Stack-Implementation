@@ -54,7 +54,7 @@ void init_logging (const char * const filename, const logging_level level);
         level    - level of log output
         fmt, ... - string with formatted args
 */
-void log_printf (const logging_level level, const char* fmt, ...);
+void log_printf  (const logging_level level, const char* fmt, ...);
 
 /*
     Close log file
@@ -77,29 +77,15 @@ static void get_timestamp (char * const timestamp);
 */
 static void format_log (const logging_level level, const char * const str, char* res_str); 
 
-#endif
-
 /*
     Checks that work in debug and exits and in release not. Also logs errors
 */
 
-#ifdef __DEBUG__
-#define CHECK(level, condition, format, ...)                                    \
-    {                                                                           \
-        if (condition) {                                                        \
-            log_printf(level, "[File %s at line %d at %s] " format,             \
-                       __FILE__, __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__); \
-            exit(1);                                                            \
-        }                                                                       \
-    }
-
-#else
-#define CHECK(level, condition, format, ...)                                    \
-    {                                                                           \
-        if (condition) {                                                        \
-            log_printf(level, "[File %s at line %d at %s] " format,             \
-                       __FILE__, __LINE__, __PRETTY_FUNCTION__, ##__VA_ARGS__); \
-        }                                                                       \
-    }
+#define CHECK(level, condition, format, ...)                                              \
+    ( (condition) ? 1                                                                     \
+        : (                                                                               \
+            log_printf(level, "[File %s at line %d at %s] %s",                            \
+                       __FILE__, __LINE__, __PRETTY_FUNCTION__, (format), ##__VA_ARGS__), \
+            0 ) )
 
 #endif
