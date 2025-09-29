@@ -57,8 +57,14 @@ int main()
     STACK_INIT(spoints, Point_t, print_Point_t);
 
     STACK_PUSH_S(&spoints, Point_t, .x = 1.0,  .y = 2.0);
+
+    Point_t p0 = {  };
     STACK_PUSH_S(&spoints, Point_t, .x = 3.5,  .y = -4.25);
+    STACK_POP(&spoints, p0);
     STACK_PUSH_S(&spoints, Point_t, .x = -7.0, .y = 0.5);
+
+    Point_t p1 = { .x = 3.543, .y = -0.00923 };
+    STACK_PUSH_VAR(&spoints, p1);
 
     stack_print(&spoints);
     STACK_DUMP(INFO, &spoints, OK, "Test struct stack dump");    

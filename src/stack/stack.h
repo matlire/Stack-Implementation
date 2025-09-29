@@ -137,6 +137,9 @@ err_t stack_verify(const stack_t* st);
 #define STACK_PUSH_T(S, T, VAL)          \
     stack_push((S), &(T){ (VAL) })
 
+#define STACK_PUSH_VAR(S, VAR)           \
+    stack_push((S), &(VAR))
+
 #define STACK_PUSH_S(S, T, ...)          \
     stack_push((S), &(T){ __VA_ARGS__ })
 
