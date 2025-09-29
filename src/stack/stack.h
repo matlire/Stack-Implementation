@@ -26,6 +26,8 @@
 #define INITIAL_CAPACITY 4
 #define STR_CAT_MAX_SIZE 4096
 
+#define STACK_CANARY ((long long)0xDEDEBADEDAEBADDLL)
+
 typedef struct
 {
     const char* name;
@@ -56,6 +58,9 @@ typedef struct
     void*  data;
     size_t size;
     size_t capacity;
+
+    void*  raw_data;
+    size_t alloc_size;
 
     stack_print_fn printer; 
     stack_sprint_fn sprinter; 
@@ -120,6 +125,15 @@ err_t stack_verify(const stack_t* st);
         BODY;                                               \
     }
 
+#define DEFINE_STACK_SPRINTER(T, BODY)                                        \
+    static int sprint_##T(char* __dst, size_t __dstsz, const void* __VP)      \
+    {                                                                         \
+        const T* __PTR = (const T*)__VP;                                      \
+        size_t __len = (__dst && __dstsz) ? strnlen(__dst, __dstsz) : 0;      \
+        if (__len >= __dstsz) return 0;                                       \
+        BODY;                                                                 \
+    }
+
 #define STACK_PUSH_T(S, T, VAL)          \
     stack_push((S), &(T){ (VAL) })
 
@@ -158,14 +172,16 @@ err_t stack_verify(const stack_t* st);
         return (errcode);                                       \
     }
 
-#define STACK_VERIFY(st)            \
-    err_t res = stack_verify((st)); \
-    if (res != OK)                  \
-    {                               \
-        printf("%s", err_str(res)); \
-        exit(1);                    \
-        return (res);               \
-    }
+#define STACK_VERIFY(st)                   \
+    do {                                   \
+        err_t sv_res = stack_verify((st)); \
+        if (sv_res != OK)                  \
+        {                                  \
+            printf("%s", err_str(sv_res)); \
+            exit(1);                       \
+            return (sv_res);               \
+        }                                  \
+    } while (0)
     
 
 #endif

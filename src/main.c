@@ -5,41 +5,64 @@ void terminate_prepare();
 
 DEFINE_STACK_PRINTER_SIMPLE(int, "%d ")
 
+typedef struct
+{
+    double x;
+    double y;
+} Point_t;
+
+DEFINE_STACK_PRINTER(Point_t, {
+    fprintf(__OUT__, "(%.3lf, %.3lf) ", __PTR->x, __PTR->y);
+})
+
+DEFINE_STACK_SPRINTER(Point_t, {
+    return snprintf(__dst + __len, __dstsz - __len, "(%.3lf, %.3lf) ", __PTR->x, __PTR->y);
+})
+
 int main()
 {
     init_logging("log.log", DEBUG);
 
+    // Simple type stack
     STACK_INIT(sint, int, print_int);
 
     STACK_PUSH(&sint, 1);
     stack_print(&sint);
-    printf("\n");
 
     STACK_PUSH(&sint, 2);
     stack_print(&sint);
-    printf("\n");
 
     int a = 6;
     STACK_PUSH(&sint, a);
 
     STACK_PUSH(&sint, 3);
     stack_print(&sint);
-
     STACK_PUSH(&sint, 4);
+    stack_print(&sint);
 
-    STACK_DUMP(INFO, &sint, OK, "Test");
+    STACK_DUMP(INFO, &sint, OK, "Test simple type stack dump");
 
     STACK_POP_T(&sint, int, i);
-    printf("%d\n", i);
+    printf("Popped 1: %d\n", i);
     STACK_POP(&sint, i);
-    printf("%d\n", i);
+    printf("Popped 2: %d\n", i);
     stack_print(&sint);
-    printf("\n");
 
-    sint.data = NULL;
+    //sint.data = NULL;
     STACK_PUSH(&sint, 4);
-    
+    stack_print(&sint);
     stack_dtor(&sint);
+
+    // Struct stack
+    STACK_INIT(spoints, Point_t, print_Point_t);
+
+    STACK_PUSH_S(&spoints, Point_t, .x = 1.0,  .y = 2.0);
+    STACK_PUSH_S(&spoints, Point_t, .x = 3.5,  .y = -4.25);
+    STACK_PUSH_S(&spoints, Point_t, .x = -7.0, .y = 0.5);
+
+    stack_print(&spoints);
+    STACK_DUMP(INFO, &spoints, OK, "Test struct stack dump");    
+    stack_dtor(&spoints);
 
     terminate_prepare();
     return 0;

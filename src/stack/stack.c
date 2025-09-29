@@ -23,35 +23,48 @@ static inline void* calculate_ptr(const stack_t * const st, const size_t i)
     return (void*)((unsigned char*)st->data + i * st->elem_info.elem_stride);
 }
 
+static inline void* back_canary_ptr(const stack_t* st)
+{
+    return (void*)((unsigned char*)st->raw_data + st->alloc_size - sizeof(STACK_CANARY));
+}
+
 static err_t stack_realloc(stack_t* st, const size_t new_capacity)
 {
-    err_t err = stack_verify(st);
-    if(err != OK) return err;
-    
+    STACK_VERIFY(st);
+
     if (new_capacity == st->capacity) return OK;
 
-    size_t new_bytes = new_capacity * st->elem_info.elem_stride;
+    size_t new_bytes = new_capacity * st->elem_info.elem_stride + 2 * sizeof(STACK_CANARY);
 
     if (new_capacity == 0)
     {
-        free(st->data);
-        st->data     = NULL;
-        st->capacity = 0;
+        free(st->raw_data);
+        st->data       = NULL;
+        st->raw_data   = NULL;
+        st->capacity   = 0;
+        st->alloc_size = 0;
         if (st->size > 0) st->size = 0;
         return OK;
     }
 
-    void* p = (void*) realloc(st->data, new_bytes);
+    void* p = (void*) realloc(st->raw_data, new_bytes);
     if (!p) return ERR_ALLOC;
+
+    st->raw_data = p;
+    st->data     = (void*)((unsigned char*)p + sizeof(STACK_CANARY));
 
     if (new_capacity > st->capacity){
         const size_t old_bytes = st->capacity * st->elem_info.elem_stride;
-        memset((unsigned char*)p + old_bytes, 0, new_bytes - old_bytes);
-    }
+        memset((unsigned char*)st->data + old_bytes, 0, new_bytes - old_bytes);
+    } 
 
-    st->data     = p;
-    st->capacity = new_capacity;
+    st->capacity   = new_capacity; 
+    st->alloc_size = new_bytes;
+    *(long long*)st->raw_data             = STACK_CANARY;
+    *((long long*)back_canary_ptr(st))    = STACK_CANARY;
     if (st->size > st->capacity) st->size = st->capacity;
+
+    STACK_VERIFY(st);
 
     return OK;
 }
@@ -72,15 +85,25 @@ err_t stack_ctor(stack_t* st, element_info_t info,
     st->stack_info = stack_info;
     st->elem_info  = info;
 
-    st->data = NULL;
-    st->size = 0;
+    st->data     = NULL;
+    st->size     = 0;
     st->capacity = INITIAL_CAPACITY;
+    st->raw_data = NULL; 
 
     st->printer  = printer;
     st->sprinter = sprinter;
 
-    void* res = (void*) calloc(1, st->capacity * st->elem_info.elem_stride); 
-    st->data  = res;
+    size_t to_alloc = st->capacity * st->elem_info.elem_stride + 2 * sizeof(STACK_CANARY);
+    void* res       = (void*) calloc(1, to_alloc); 
+    st->alloc_size  = to_alloc;
+
+    st->raw_data = res;
+    st->data     = (void*)((unsigned char*)res + sizeof(STACK_CANARY));
+
+    *((long long*)st->raw_data)        = STACK_CANARY;
+    *((long long*)back_canary_ptr(st)) = STACK_CANARY;
+
+    STACK_VERIFY(st);
 
     return OK;
 }
@@ -89,11 +112,13 @@ err_t stack_dtor(stack_t* st)
 {
     if (st->data)
     {
-        free(st->data);
-        st->data = NULL;
+        free(st->raw_data);
+        st->data     = NULL;
+        st->raw_data = NULL;
     }
-    st->size = 0;
-    st->capacity = 0;
+    st->alloc_size = 0;
+    st->size       = 0;
+    st->capacity   = 0;
 
     return OK;
 }
@@ -105,9 +130,6 @@ err_t stack_push(stack_t* st, const void* elem)
     if(!CHECK(ERROR, elem != NULL, "elem == NULL on push")) return ERR_BAD_ARG;
 
     err_t err;
-    //err = stack_verify(st);
-    //if(err != OK) return err;
-
 
     if (st->size == st->capacity){
         size_t target = st->capacity ? st->capacity * 2 : 4;
@@ -117,41 +139,41 @@ err_t stack_push(stack_t* st, const void* elem)
     memcpy(calculate_ptr(st, st->size), elem, st->elem_info.elem_size);
     st->size++;
     
-    err = stack_verify(st);
-    if(err != OK) return err;
+    STACK_VERIFY(st);
     
     return OK;
 }
 
 err_t stack_pop (stack_t* st, void* elem)
 {
-    err_t err = stack_verify(st);
-    if(err != OK) return err;
+    STACK_VERIFY(st);
+
     if(!CHECK(ERROR, st->size > 0, "st size == 0 on pop")) return ERR_BAD_ARG;
     if(!CHECK(ERROR, elem != NULL, "elem == NULL on pop")) return ERR_BAD_ARG;
 
     memcpy(elem, calculate_ptr(st, st->size - 1), st->elem_info.elem_size);
     st->size--;
 
-    err = stack_verify(st);
-    if(err != OK) return err;
-   
     if (st->capacity >= 8 && st->size <= st->capacity / 4){
-        err = stack_realloc(st, st->capacity / 2);
+        err_t err = stack_realloc(st, st->capacity / 2);
         if(err != OK) return err;
     }
+
+    STACK_VERIFY(st);
+
     return OK;
 }
 
 err_t stack_print(const stack_t* st)
 {   
-    err_t err = stack_verify(st);
-    if(err != OK) return err;
-    
+    STACK_VERIFY(st);
+     
     for (size_t i = 0; i < st->size; i++)
     {
         st->printer(stdout, calculate_ptr(st, i));
     }
+
+    fprintf(stdout, "\n");
 
     return OK;
 }
@@ -174,7 +196,7 @@ err_t stack_dump (logging_level level, const stack_t* st, err_t code, const char
 
     IFLOG(level, "=== STACK DUMP %p ===", (void*)st);
 
-    snprintf(res_str, STR_CAT_MAX_SIZE, "status     : %s", err_str(code));
+    snprintf(res_str, STR_CAT_MAX_SIZE, "status        : %s", err_str(code));
     if (comment) {
         size_t len = strnlen(res_str, STR_CAT_MAX_SIZE);
         snprintf(res_str + len, STR_CAT_MAX_SIZE - len, "  -- %s", comment);
@@ -182,22 +204,27 @@ err_t stack_dump (logging_level level, const stack_t* st, err_t code, const char
 
     IFLOG(level, res_str); 
 
-    IFLOG(level, "name       : %s", st->stack_info.name ? st->stack_info.name : "(?)");
+    IFLOG(level, "name          : %s", st->stack_info.name ? st->stack_info.name : "(?)");
     
     IFDEBUG(
-        IFLOG(level, "created    : %s:%d in %s",
+        IFLOG(level, "created       : %s:%d in %s",
             st->stack_info.file ? st->stack_info.file : "(?)",
             st->stack_info.line,
             st->stack_info.func ? st->stack_info.func : "(?)");
     )
 
-    IFLOG(level, "type       : %s",  st->elem_info.elem_name ? st->elem_info.elem_name : "(?)");
-    IFLOG(level, "elem size  : %zu", st->elem_info.elem_size);
-    IFLOG(level, "elem align : %zu", st->elem_info.elem_align);
-    IFLOG(level, "elem stride: %zu", st->elem_info.elem_stride);
-    IFLOG(level, "data base  : %p",  (void*)st->data);
+    IFLOG(level, "type          : %s",   st->elem_info.elem_name ? st->elem_info.elem_name : "(?)");
+    IFLOG(level, "alloc size    : %zu",  st->alloc_size);
+    IFLOG(level, "set canary    : %lld", (long long)STACK_CANARY);
+    IFLOG(level, "canary 1      : %lld", *(long long*)st->raw_data);
+    IFLOG(level, "canary 2      : %lld", *(long long*)(back_canary_ptr(st)));
+    IFLOG(level, "elem size     : %zu",  st->elem_info.elem_size);
+    IFLOG(level, "elem align    : %zu",  st->elem_info.elem_align);
+    IFLOG(level, "elem stride   : %zu",  st->elem_info.elem_stride);
+    IFLOG(level, "raw data base : %p",   (void*)st->raw_data);
+    IFLOG(level, "data base     : %p",   (void*)st->data);
 
-    IFLOG(level, "size/cap   : %zu / %zu", st->size, st->capacity);
+    IFLOG(level, "size/cap      : %zu / %zu", st->size, st->capacity);
     if (st->data == NULL) { IFLOG(level, "(no data) \n === END STACK DUMP ===\n"); return OK;  }
 
     for (size_t i = 0; i < st->capacity; i++)
@@ -205,7 +232,7 @@ err_t stack_dump (logging_level level, const stack_t* st, err_t code, const char
         const void* ptr = calculate_ptr(st, i);
         int used = (i < st->size);
         
-        snprintf(res_str, STR_CAT_MAX_SIZE, " [%zu] %s", i, used ? "USED   " : "UNUSED ");
+        snprintf(res_str, STR_CAT_MAX_SIZE, "  [%zu] %s", i, used ? "USED   " : "UNUSED ");
 
         size_t len2 = strnlen(res_str, STR_CAT_MAX_SIZE);
         if (st->data) print_hex_bytes(res_str, ptr, st->elem_info.elem_size);
@@ -270,6 +297,11 @@ err_t stack_verify(const stack_t* st)
         STACK_CHECK(ERROR, (ptr1 % ei->elem_align) == 0, st, ERR_CORRUPT, 
                     "stack_verify: ptr[1] misaligned: %p", (void*)ptr1);
     }
+
+    STACK_CHECK(ERROR, (STACK_CANARY == *(long long*)st->raw_data) && 
+                (STACK_CANARY == *(long long*)(back_canary_ptr(st))), st, ERR_CORRUPT,
+                "stack_verify: canary check failed: expected: %lld got: %lld and %lld", 
+                 STACK_CANARY, *(long long*)st->raw_data, *((long long*)(back_canary_ptr(st))));
 
     return OK;
 }
