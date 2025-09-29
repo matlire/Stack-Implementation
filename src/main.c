@@ -12,7 +12,7 @@ typedef struct
 } Point_t;
 
 DEFINE_STACK_PRINTER(Point_t, {
-    fprintf(__OUT__, "(%.3lf, %.3lf) ", __PTR->x, __PTR->y);
+    return fprintf(__OUT__, "(%.3lf, %.3lf) ", __PTR->x, __PTR->y);
 })
 
 DEFINE_STACK_SPRINTER(Point_t, {
@@ -24,7 +24,7 @@ int main()
     init_logging("log.log", DEBUG);
 
     // Simple type stack
-    STACK_INIT(sint, int, print_int);
+    STACK_INIT(sint, int);
 
     STACK_PUSH(&sint, 1);
     stack_print(&sint);
@@ -43,9 +43,9 @@ int main()
     STACK_DUMP(INFO, &sint, OK, "Test simple type stack dump");
 
     STACK_POP_T(&sint, int, i);
-    printf("Popped 1: %d\n", i);
+    printf("Popped: %d\n", i);
     STACK_POP(&sint, i);
-    printf("Popped 2: %d\n", i);
+    printf("Popped: %d\n", i);
     stack_print(&sint);
 
     //sint.data = NULL;
@@ -54,7 +54,7 @@ int main()
     stack_dtor(&sint);
 
     // Struct stack
-    STACK_INIT(spoints, Point_t, print_Point_t);
+    STACK_INIT(spoints, Point_t);
 
     STACK_PUSH_S(&spoints, Point_t, .x = 1.0,  .y = 2.0);
 

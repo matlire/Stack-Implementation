@@ -55,7 +55,7 @@ static err_t stack_realloc(stack_t* st, const size_t new_capacity)
 
     if (new_capacity > st->capacity){
         const size_t old_bytes = st->capacity * st->elem_info.elem_stride;
-        memset((unsigned char*)st->data + old_bytes, 0, new_bytes - old_bytes);
+        memset((unsigned char*)st->data + old_bytes, 0, new_bytes - old_bytes - 2 * sizeof(STACK_CANARY));
     } 
 
     st->capacity   = new_capacity; 
@@ -73,9 +73,9 @@ err_t stack_ctor(stack_t* st, element_info_t info,
                  const stack_print_fn printer, const stack_sprint_fn sprinter,
                  const stack_info_t stack_info)
 {
-    if(!CHECK(ERROR, st != NULL, "st == NULL on ctor"))              return ERR_BAD_ARG;
-    if(!CHECK(ERROR, info.elem_size != 0, "elem_size == 0 on ctor")) return ERR_BAD_ARG;
-    if(!CHECK(ERROR, printer != NULL, "printer == NULL on ctor"))    return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, st != NULL,          st, ERR_BAD_ARG, "ctor: st == NULL");
+    STACK_ERR_CHECK(ERROR, info.elem_size != 0, st, ERR_BAD_ARG, "ctor: elem_size == 0");
+    STACK_ERR_CHECK(ERROR, printer != NULL,     st, ERR_BAD_ARG, "ctor:printer == NULL");
 
     if (info.elem_stride == 0)
     {
@@ -127,7 +127,7 @@ err_t stack_push(stack_t* st, const void* elem)
 {
     STACK_VERIFY(st);
 
-    if(!CHECK(ERROR, elem != NULL, "elem == NULL on push")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, elem != NULL, st, ERR_BAD_ARG, "stack_push: elem == NULL");
 
     err_t err;
 
@@ -148,11 +148,11 @@ err_t stack_pop (stack_t* st, void* elem)
 {
     STACK_VERIFY(st);
 
-    if(!CHECK(ERROR, st->size > 0, "st size == 0 on pop")) return ERR_BAD_ARG;
-    if(!CHECK(ERROR, elem != NULL, "elem == NULL on pop")) return ERR_BAD_ARG;
-
-    memcpy(elem, calculate_ptr(st, st->size - 1), st->elem_info.elem_size);
+    STACK_ERR_CHECK(ERROR, st->size != 0, st, ERR_CORRUPT, "stack_pop: stack is empty");
+    STACK_ERR_CHECK(ERROR, elem != NULL, st,  ERR_CORRUPT, "stack_pop: elem is NULL");
+ 
     st->size--;
+    memcpy(elem, calculate_ptr(st, st->size), st->elem_info.elem_size);  
 
     if (st->capacity >= 8 && st->size <= st->capacity / 4){
         err_t err = stack_realloc(st, st->capacity / 2);

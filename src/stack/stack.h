@@ -47,8 +47,8 @@ typedef struct
     size_t elem_stride;
 } element_info_t;
 
-typedef int  (*stack_sprint_fn)(char* dst, size_t dstsz, const void* elem);
-typedef void (*stack_print_fn) (FILE* file, const void* elem);
+typedef int (*stack_sprint_fn) (char* dst, size_t dstsz, const void* elem);
+typedef int (*stack_print_fn)  (FILE* file, const void* elem);
 
 typedef struct
 {
@@ -62,7 +62,7 @@ typedef struct
     void*  raw_data;
     size_t alloc_size;
 
-    stack_print_fn printer; 
+    stack_print_fn  printer; 
     stack_sprint_fn sprinter; 
 } stack_t;
 
@@ -100,15 +100,15 @@ err_t stack_verify(const stack_t* st);
                                                    IFDEBUG(.func = __PRETTY_FUNCTION__, \
                                                   .file = __FILE__, .line = __LINE__) })
 
-#define STACK_INIT(m_name, T, printer)                                              \
-    stack_t m_name = {  };                                                          \
-    (void)stack_ctor(&(m_name), ELEMENT_INFO_INIT(T), (printer), sprint_##T,        \
+#define STACK_INIT(m_name, T)                                                   \
+    stack_t m_name = {  };                                                      \
+    (void)stack_ctor(&(m_name), ELEMENT_INFO_INIT(T), print_##T, sprint_##T,    \
                      STACK_INFO_INIT(m_name))
 
 #define DEFINE_STACK_PRINTER_SIMPLE(T, FMT)                                     \
-    static void print_##T(FILE* __OUT__, const void* __PTR)                     \
+    static int print_##T(FILE* __OUT__, const void* __PTR)                      \
     {                                                                           \
-        fprintf(__OUT__, FMT, *(const T*)__PTR);                                \
+        return fprintf(__OUT__, FMT, *(const T*)__PTR);                         \
     }                                                                           \
     static int sprint_##T(char* __dst, size_t __dstsz, const void* __PTR)       \
     {                                                                           \
@@ -119,7 +119,7 @@ err_t stack_verify(const stack_t* st);
     }
 
 #define DEFINE_STACK_PRINTER(T, BODY)                       \
-    static void print_##T(FILE* __OUT__, const void* __VP)  \
+    static int print_##T(FILE* __OUT__, const void* __VP)   \
     {                                                       \
         const T* __PTR = (const T*)__VP;                    \
         BODY;                                               \
@@ -143,7 +143,7 @@ err_t stack_verify(const stack_t* st);
 #define STACK_PUSH_S(S, T, ...)          \
     stack_push((S), &(T){ __VA_ARGS__ })
 
-#define STACK_POP_T(S, T, m_name) \
+#define STACK_POP_T(S, T, m_name)             \
     T m_name; (void)stack_pop((S), &(m_name))
 
 #define STACK_PUSH(S, V)                                                   \
@@ -164,8 +164,8 @@ err_t stack_verify(const stack_t* st);
         long double:          stack_push((S), &(long double){(V)})         \
     )
 
-#define STACK_POP(S, VAR) \
-    stack_pop((S), &(VAR))
+#define STACK_POP(S, VAR)        \
+    (void)stack_pop((S), &(VAR))
 
 #define STACK_CHECK(level, cond, stack, errcode, fmt, ...)      \
     if (!CHECK((level), (cond), (fmt), ##__VA_ARGS__)) {        \
@@ -175,6 +175,18 @@ err_t stack_verify(const stack_t* st);
         return (errcode);                                       \
     }
 
+#define STACK_ERR_CHECK(level, cond, stack, errcode, fmt, ...)      \
+    do {                                                            \
+        int sc_res = CHECK((level), (cond), (fmt), ##__VA_ARGS__);  \
+        if (!sc_res) {                                              \
+            char buf[STR_CAT_MAX_SIZE] = {  };                      \
+            (void)snprintf(buf, sizeof(buf), (fmt), ##__VA_ARGS__); \
+            stack_dump((level), (stack), (errcode), (buf));         \
+            printf("%s", err_str(errcode));                         \
+            exit(1);                                                \
+        }                                                           \
+    } while (0)
+
 #define STACK_VERIFY(st)                   \
     do {                                   \
         err_t sv_res = stack_verify((st)); \
@@ -182,7 +194,6 @@ err_t stack_verify(const stack_t* st);
         {                                  \
             printf("%s", err_str(sv_res)); \
             exit(1);                       \
-            return (sv_res);               \
         }                                  \
     } while (0)
     
