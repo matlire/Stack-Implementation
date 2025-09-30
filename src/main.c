@@ -59,7 +59,6 @@ int main()
     STACK_POP(sint, i);
     printf("Popped: %d\n", i);*/
 
-    //sint.data = NULL;
     STACK_PUSH(sint, 4);
     stack_print(sint);
     stack_dtor(sint);

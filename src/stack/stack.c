@@ -38,21 +38,24 @@ static inline stack_t* get_stack(stack_id id)
     return (id_in_range(id) ? stack_array[id] : NULL);
 }
 
-static void free_slot(stack_id slot)
+static int free_slot(stack_id slot)
 {
-    if (!CHECK(ERROR, id_in_range(slot), "free_slot: stack_id incorrect")) return;
+    if (!CHECK(ERROR, id_in_range(slot), "free_slot: stack_id incorrect")) return 1;
     free(stack_array[slot]);
     stack_array[slot] = NULL;
+    return 0;
 }
 
-static void ensure_registry(void)
+static int ensure_registry(void)
 {
     if (stack_array == NULL || stack_array_cap == 0)
     {
         stack_array_cap = INITIAL_CAPACITY;
         stack_array = (stack_t**) calloc(stack_array_cap, sizeof(*stack_array));
-        if (!CHECK(ERROR, stack_array != NULL, "ensure_registry: failed to allocate stack_array")) return;
+        if (!CHECK(ERROR, stack_array != NULL, "ensure_registry: failed to allocate stack_array")) return 0;
+        return 1;
     }
+    return 0;
 }
 
 static stack_id alloc_slot(void)
@@ -95,9 +98,11 @@ static inline void* back_canary_ptr(const stack_t* st)
 
 static err_t stack_realloc(stack_id stack, const size_t new_capacity)
 {
-    if (!CHECK(ERROR, id_in_range(stack), "stack_realloc: stack_id incorrect")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, id_in_range(stack), stack, ERR_BAD_ARG, 
+                         "stack_realloc: stack_id incorrect");
     stack_t* st = get_stack(stack);
-    if (!CHECK(ERROR, st != NULL, "stack_realloc: st == NULL")) return ERR_CORRUPT;
+    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_CORRUPT,
+                    "stack_realloc: st == NULL");
 
     STACK_VERIFY(stack);
 
@@ -117,7 +122,8 @@ static err_t stack_realloc(stack_id stack, const size_t new_capacity)
     }
 
     void* p = (void*) realloc(st->raw_data, new_bytes);
-    if (!CHECK(ERROR, p != NULL, "stack_realloc: realloc failed")) return ERR_ALLOC;
+    STACK_ERR_CHECK(ERROR, p != NULL, stack, ERR_ALLOC,
+                    "stack_realloc: realloc failed");
 
     st->raw_data = p;
     st->data     = (void*)((unsigned char*)p + sizeof(STACK_CANARY));
@@ -188,9 +194,11 @@ err_t stack_ctor(stack_id* stack, element_info_t info,
 
 err_t stack_dtor(stack_id stack)
 {
-    if (!CHECK(ERROR, id_in_range(stack), "stack_dtor: stack_id incorrect")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, id_in_range(stack), stack, ERR_BAD_ARG,
+                    "stack_dtor: stack_id incorrect");
     stack_t* st = get_stack(stack);
-    if (!CHECK(ERROR, st != NULL, "stack_dtor: st == NULL")) return ERR_CORRUPT;
+    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_CORRUPT,
+                    "stack_dtor: st == NULL");
 
     if (st->data)
     {
@@ -208,10 +216,13 @@ err_t stack_dtor(stack_id stack)
 
 err_t stack_push(stack_id stack, const void* elem)
 {
-    if (!CHECK(ERROR, id_in_range(stack), "stack_push: stack_id incorrect")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, id_in_range(stack), stack, ERR_BAD_ARG,
+                    "stack_push: stack_id incorrect");
     stack_t* st = get_stack(stack);
-    if (!CHECK(ERROR, st   != NULL, "stack_push: st == NULL")) return ERR_CORRUPT;
-    if (!CHECK(ERROR, elem != NULL, "stack_push: elem == NULL")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_CORRUPT, 
+                    "stack_push: st == NULL");
+    STACK_ERR_CHECK(ERROR, elem != NULL, stack, ERR_BAD_ARG,
+                    "stack_push: elem == NULL");
 
     STACK_VERIFY(stack);
 
@@ -232,11 +243,15 @@ err_t stack_push(stack_id stack, const void* elem)
 
 err_t stack_pop (stack_id stack, void* elem)
 {
-    if (!CHECK(ERROR, id_in_range(stack), "stack_pop: stack_id incorrect")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, id_in_range(stack), stack, ERR_BAD_ARG,
+                    "stack_pop: stack_id incorrect");
     stack_t* st = get_stack(stack);
-    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_BAD_ARG, "stack_pop: st == NULL");
-    STACK_ERR_CHECK(ERROR, elem != NULL, stack, ERR_BAD_ARG, "stack_pop: elem == NULL");
-    STACK_ERR_CHECK(ERROR, st->size != 0, stack, ERR_CORRUPT, "stack_pop: size == 0");
+    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_BAD_ARG, 
+                    "stack_pop: st == NULL");
+    STACK_ERR_CHECK(ERROR, elem != NULL, stack, ERR_BAD_ARG,
+                    "stack_pop: elem == NULL");
+    STACK_ERR_CHECK(ERROR, st->size != 0, stack, ERR_CORRUPT,
+                    "stack_pop: size == 0");
 
     STACK_VERIFY(stack);
 
@@ -255,9 +270,11 @@ err_t stack_pop (stack_id stack, void* elem)
 
 err_t stack_print(const stack_id stack)
 {   
-    if (!CHECK(ERROR, id_in_range(stack), "stack_print: stack_id incorrect")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, id_in_range(stack), stack, ERR_BAD_ARG,
+                    "stack_print: stack_id incorrect");
     stack_t* st = get_stack(stack);
-    if (!CHECK(ERROR, st != NULL, "stack_print: st == NULL")) return ERR_CORRUPT;
+    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_CORRUPT, 
+               "stack_print: st == NULL");
 
     STACK_VERIFY(stack);
      
@@ -351,9 +368,11 @@ err_t stack_dump (logging_level level, const stack_id stack, err_t code, const c
 
 err_t stack_verify(const stack_id stack)
 {
-    if (!CHECK(ERROR, id_in_range(stack), "stack_verify: stack_id incorrect")) return ERR_BAD_ARG;
+    STACK_ERR_CHECK(ERROR, id_in_range(stack), stack, ERR_BAD_ARG, 
+                    "stack_verify: stack_id incorrect");
     stack_t* st = get_stack(stack);
-    if (!CHECK(ERROR, st != NULL, "stack_verify: st == NULL")) return ERR_CORRUPT;
+    STACK_ERR_CHECK(ERROR, st != NULL, stack, ERR_CORRUPT, 
+                    "stack_verify: st == NULL");
 
     const element_info_t* ei = &st->elem_info;
     STACK_CHECK(ERROR, ei != NULL, stack, ERR_CORRUPT, "stack_verify: elem info == NULL");
