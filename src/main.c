@@ -48,6 +48,17 @@ int main()
     printf("Popped: %d\n", i);
     stack_print(sint);
 
+    /*STACK_POP(sint, i);
+    printf("Popped: %d\n", i);
+    STACK_POP(sint, i);
+    printf("Popped: %d\n", i);
+    STACK_POP(sint, i);
+    printf("Popped: %d\n", i);
+    STACK_POP(sint, i);
+    printf("Popped: %d\n", i);
+    STACK_POP(sint, i);
+    printf("Popped: %d\n", i);*/
+
     //sint.data = NULL;
     STACK_PUSH(sint, 4);
     stack_print(sint);
