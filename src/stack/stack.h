@@ -26,7 +26,7 @@
 #define INITIAL_CAPACITY 4
 #define STR_CAT_MAX_SIZE 4096
 
-#define STACK_CANARY ((long long)0xDEDEBADEDAEBADDLL)
+#define STACK_CANARY ((long long)0xB333DEDDEDAEBALL)
 
 typedef struct
 {
@@ -50,22 +50,6 @@ typedef struct
 typedef int (*stack_sprint_fn) (char* dst, size_t dstsz, const void* elem);
 typedef int (*stack_print_fn)  (FILE* file, const void* elem);
 
-typedef struct
-{
-    stack_info_t   stack_info;
-    element_info_t elem_info;
-
-    void*  data;
-    size_t size;
-    size_t capacity;
-
-    void*  raw_data;
-    size_t alloc_size;
-
-    stack_print_fn  printer; 
-    stack_sprint_fn sprinter; 
-} stack_t;
-
 typedef enum 
 {
     OK          = 0,
@@ -77,21 +61,23 @@ typedef enum
 extern const char * const err_msgs[];
 const char* err_str(const err_t e);
 
-err_t stack_ctor(stack_t* st, element_info_t info,
+typedef size_t stack_id;
+
+err_t stack_ctor(stack_id* stack, element_info_t info,
                  const stack_print_fn printer, const stack_sprint_fn sprinter,
                  const stack_info_t stack_info);
-err_t stack_dtor(stack_t* st);
+err_t stack_dtor(stack_id st);
 
-err_t stack_push(stack_t* st, const void* elem);
-err_t stack_pop (stack_t* st, void* elem);
+err_t stack_push(stack_id stack, const void* elem);
+err_t stack_pop (stack_id stack, void* elem);
 
-err_t stack_print(const stack_t* st);
+err_t stack_print(const stack_id stack);
 
-err_t stack_dump (logging_level level, const stack_t* st, err_t code, const char* comment);
+err_t stack_dump (logging_level level, const stack_id stack, err_t code, const char* comment);
 #define STACK_DUMP(level, st, code, comment) \
     stack_dump((level), (st), (code), (comment))
 
-err_t stack_verify(const stack_t* st);
+err_t stack_verify(const stack_id stack);
 
 #define ELEMENT_INFO_INIT(T)    ((element_info_t) { .elem_name = #T, .elem_size = sizeof(T),     \
                                                     .elem_align = alignof(T), .elem_stride = 0 })
@@ -101,7 +87,7 @@ err_t stack_verify(const stack_t* st);
                                                   .file = __FILE__, .line = __LINE__) })
 
 #define STACK_INIT(m_name, T)                                                   \
-    stack_t m_name = {  };                                                      \
+    stack_id m_name = 0;                                                        \
     (void)stack_ctor(&(m_name), ELEMENT_INFO_INIT(T), print_##T, sprint_##T,    \
                      STACK_INFO_INIT(m_name))
 

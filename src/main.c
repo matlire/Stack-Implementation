@@ -25,50 +25,50 @@ int main()
 
     // Simple type stack
     STACK_INIT(sint, int);
+    
+    STACK_PUSH(sint, 1);
+    stack_print(sint);
 
-    STACK_PUSH(&sint, 1);
-    stack_print(&sint);
-
-    STACK_PUSH(&sint, 2);
-    stack_print(&sint);
+    STACK_PUSH(sint, 2);
+    stack_print(sint);
 
     int a = 6;
-    STACK_PUSH(&sint, a);
+    STACK_PUSH(sint, a);
 
-    STACK_PUSH(&sint, 3);
-    stack_print(&sint);
-    STACK_PUSH(&sint, 4);
-    stack_print(&sint);
+    STACK_PUSH(sint, 3);
+    stack_print(sint);
+    STACK_PUSH(sint, 4);
+    stack_print(sint);
 
-    STACK_DUMP(INFO, &sint, OK, "Test simple type stack dump");
+    STACK_DUMP(INFO, sint, OK, "Test simple type stack dump");
 
-    STACK_POP_T(&sint, int, i);
+    STACK_POP_T(sint, int, i);
     printf("Popped: %d\n", i);
-    STACK_POP(&sint, i);
+    STACK_POP(sint, i);
     printf("Popped: %d\n", i);
-    stack_print(&sint);
+    stack_print(sint);
 
     //sint.data = NULL;
-    STACK_PUSH(&sint, 4);
-    stack_print(&sint);
-    stack_dtor(&sint);
+    STACK_PUSH(sint, 4);
+    stack_print(sint);
+    stack_dtor(sint);
 
     // Struct stack
     STACK_INIT(spoints, Point_t);
 
-    STACK_PUSH_S(&spoints, Point_t, .x = 1.0,  .y = 2.0);
+    STACK_PUSH_S(spoints, Point_t, .x = 1.0,  .y = 2.0);
 
     Point_t p0 = {  };
-    STACK_PUSH_S(&spoints, Point_t, .x = 3.5,  .y = -4.25);
-    STACK_POP(&spoints, p0);
-    STACK_PUSH_S(&spoints, Point_t, .x = -7.0, .y = 0.5);
+    STACK_PUSH_S(spoints, Point_t, .x = 3.5,  .y = -4.25);
+    STACK_POP(spoints, p0);
+    STACK_PUSH_S(spoints, Point_t, .x = -7.0, .y = 0.5);
 
     Point_t p1 = { .x = 3.543, .y = -0.00923 };
-    STACK_PUSH_VAR(&spoints, p1);
+    STACK_PUSH_VAR(spoints, p1);
 
-    stack_print(&spoints);
-    STACK_DUMP(INFO, &spoints, OK, "Test struct stack dump");    
-    stack_dtor(&spoints);
+    stack_print(spoints);
+    STACK_DUMP(INFO, spoints, OK, "Test struct stack dump");    
+    stack_dtor(spoints);
 
     terminate_prepare();
     return 0;
