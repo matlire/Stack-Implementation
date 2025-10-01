@@ -86,10 +86,11 @@ err_t stack_verify(const stack_id stack);
                                                    IFDEBUG(.func = __PRETTY_FUNCTION__, \
                                                   .file = __FILE__, .line = __LINE__) })
 
-#define STACK_INIT(m_name, T)                                                   \
-    stack_id m_name = 0;                                                        \
-    (void)stack_ctor(&(m_name), ELEMENT_INFO_INIT(T), print_##T, sprint_##T,    \
-                     STACK_INFO_INIT(m_name))
+#define STACK_INIT(m_name, T)                                                  \
+    stack_id m_name = 0;                                                       \
+    err_t stack_init_rc_##m_name = stack_ctor(&(m_name), ELEMENT_INFO_INIT(T), \
+                                              print_##T, sprint_##T,           \
+                                              STACK_INFO_INIT(m_name))
 
 #define DEFINE_STACK_PRINTER_SIMPLE(T, FMT)                                     \
     static int print_##T(FILE* __OUT__, const void* __PTR)                      \
@@ -151,7 +152,7 @@ err_t stack_verify(const stack_id stack);
     )
 
 #define STACK_POP(S, VAR)        \
-    (void)stack_pop((S), &(VAR))
+    stack_pop((S), &(VAR))
 
 #define STACK_CHECK(level, cond, stack, errcode, fmt, ...)      \
     if (!CHECK((level), (cond), (fmt), ##__VA_ARGS__)) {        \

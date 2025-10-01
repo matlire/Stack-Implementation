@@ -169,15 +169,15 @@ err_t stack_ctor(stack_id* stack, element_info_t info,
 
     st->data     = NULL;
     st->size     = 0;
-    st->capacity = INITIAL_CAPACITY;
     st->raw_data = NULL; 
 
     st->printer  = printer;
     st->sprinter = sprinter;
 
-    size_t to_alloc = st->capacity * st->elem_info.elem_stride + 2 * sizeof(STACK_CANARY);
+    size_t to_alloc = INITIAL_CAPACITY * st->elem_info.elem_stride + 2 * sizeof(STACK_CANARY);
     void* res       = (void*) calloc(1, to_alloc); 
     if (!CHECK(ERROR, res != NULL, "stack_ctor: res == NULL")) { free_slot(slot); return ERR_BAD_ARG; }
+    st->capacity = INITIAL_CAPACITY;
     st->alloc_size  = to_alloc;
 
     st->raw_data = res;
@@ -354,7 +354,7 @@ err_t stack_dump (logging_level level, const stack_id stack, err_t code, const c
 
         if (used && st->printer){
             size_t len3 = strnlen(res_str, STR_CAT_MAX_SIZE);
-            snprintf(res_str + len3, STR_CAT_MAX_SIZE - len2, "  | value: ");
+            snprintf(res_str + len3, STR_CAT_MAX_SIZE - len3, "  | value: ");
             st->sprinter(res_str, STR_CAT_MAX_SIZE, ptr);
         }
 

@@ -1,7 +1,11 @@
 #include "logging/logging.h"
 #include "stack/stack.h"
 
-void terminate_prepare();
+/*
+TODO:
+- HASH
+- Canary/Hash enable
+*/
 
 DEFINE_STACK_PRINTER_SIMPLE(int, "%d ")
 
@@ -11,6 +15,7 @@ typedef struct
     double y;
 } Point_t;
 
+// (Системщина! / JOKE)
 DEFINE_STACK_PRINTER(Point_t, {
     return fprintf(__OUT__, "(%.3lf, %.3lf) ", __PTR->x, __PTR->y);
 })
@@ -25,6 +30,7 @@ int main()
 
     // Simple type stack
     STACK_INIT(sint, int);
+    if (stack_init_rc_sint != OK) { log_printf(ERROR, "failed to STACK_INIT"); return 1; }
     
     STACK_PUSH(sint, 1);
     stack_print(sint);
@@ -65,6 +71,7 @@ int main()
 
     // Struct stack
     STACK_INIT(spoints, Point_t);
+    if (stack_init_rc_spoints != OK) { log_printf(ERROR, "failed to STACK_INIT"); return 1; }
 
     STACK_PUSH_S(spoints, Point_t, .x = 1.0,  .y = 2.0);
 
@@ -80,11 +87,7 @@ int main()
     STACK_DUMP(INFO, spoints, OK, "Test struct stack dump");    
     stack_dtor(spoints);
 
-    terminate_prepare();
+    close_log_file();
     return 0;
 }
 
-void terminate_prepare()
-{
-    close_log_file();
-}
