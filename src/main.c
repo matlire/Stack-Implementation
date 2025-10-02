@@ -1,12 +1,6 @@
 #include "logging/logging.h"
 #include "stack/stack.h"
 
-/*
-TODO:
-- HASH
-- Canary/Hash enable
-*/
-
 DEFINE_STACK_PRINTER_SIMPLE(int, "%d ")
 
 typedef struct
