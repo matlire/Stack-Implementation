@@ -69,9 +69,6 @@ STACK_DEFINE_INTEGER_ASSIGN_FN(ullong,             unsigned long long)
 
 #define STACK_MEM_COPY_FN_SELECT(T)                                           \
     _Generic(((const T*)0),                                                   \
-        const char*:               stack_mem_assign_char,                     \
-        const signed char*:        stack_mem_assign_schar,                    \
-        const unsigned char*:      stack_mem_assign_uchar,                    \
         const short*:              stack_mem_assign_short,                    \
         const unsigned short*:     stack_mem_assign_ushort,                   \
         const int*:                stack_mem_assign_int,                      \
